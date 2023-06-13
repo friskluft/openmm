@@ -74,6 +74,7 @@ using namespace std;
 const int CudaContext::ThreadBlockSize = 64;
 const int CudaContext::TileSize = sizeof(tileflags)*8;
 bool CudaContext::hasInitializedCuda = false;
+std::set<CUdevice> CudaContext::devsPairedToPrimary;
 
 #ifdef WIN32
 #include <Windows.h>
@@ -237,7 +238,10 @@ CudaContext::CudaContext(const System& system, int deviceIndex, bool useBlocking
     contextIsValid = true;
     ContextSelector selector(*this);
     CHECK_RESULT(cuCtxSetCacheConfig(CU_FUNC_CACHE_PREFER_SHARED));
-    if (contextIndex > 0) {
+    
+    // If this context is secondary and if it has not yet paired with the primary (context[0]), 
+    // pair it with the primary context
+    if (contextIndex > 0 && CudaContext::devsPairedToPrimary.count(getDevice()) == 0) {
         int canAccess;
         cuDeviceCanAccessPeer(&canAccess, getDevice(), platformData.contexts[0]->getDevice());
         if (canAccess) {
@@ -247,6 +251,9 @@ CudaContext::CudaContext(const System& system, int deviceIndex, bool useBlocking
             }
             CHECK_RESULT(cuCtxEnablePeerAccess(platformData.contexts[0]->getContext(), 0));
         }
+
+        // Register this context as P2P-paired with context[0]
+        CudaContext::devsPairedToPrimary.insert(getDevice());
     }
     numAtoms = system.getNumParticles();
     paddedNumAtoms = TileSize*((numAtoms+TileSize-1)/TileSize);

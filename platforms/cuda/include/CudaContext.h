@@ -28,6 +28,7 @@
  * -------------------------------------------------------------------------- */
 
 #include <map>
+#include <set>
 #include <string>
 #include <utility>
 #define __CL_ENABLE_EXCEPTIONS
@@ -595,6 +596,9 @@ private:
     CudaBondedUtilities* bonded;
     CudaNonbondedUtilities* nonbonded;
     Kernel compilerKernel;
+
+    // (Multi-GPU only) GPU devices of secondary contexts paired with the device of primary context.
+    static std::set<CUdevice> devsPairedToPrimary;
 };
 
 /**
